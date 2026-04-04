@@ -21,15 +21,20 @@ jobs:
       - name: Build with Maven
         run: mvn clean compile
       
+      - name: Run tests (w build)
+        run: mvn test
+      
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: jar-file
           path: target/*.jar
+          retention-days: 1
 
   test:
     runs-on: ubuntu-latest
     needs: build
+    if: always()  # ← WAŻNE: uruchamia się nawet jeśli build miał warningi
     steps:
       - uses: actions/checkout@v4
       
@@ -45,12 +50,16 @@ jobs:
           name: jar-file
           path: target/
           
-      - name: Run tests
+      - name: Verify JAR exists
+        run: ls -la target/   # ← diagnostyczne: sprawdza czy plik jest
+          
+      - name: Run tests with JAR
         run: mvn test
 
   deploy:
     runs-on: ubuntu-latest
     needs: test
+    if: success()  # ← uruchamia się tylko jeśli testy przeszły
     steps:
       - uses: actions/checkout@v4
       
@@ -63,6 +72,4 @@ jobs:
       - name: Deploy to test environment
         run: |
           echo "Deploying to test environment..."
-          # tu może być np. scp, rsync, deploy do chmury
-      - name: Deploy to test environment
-        run: echo "Deploying to test environment..."
+          echo "JAR file: $(ls target/*.jar)"
